@@ -48,7 +48,7 @@ class JsonFileHandler implements JsonProcessor
     public function __construct($filePath)
     {
         if (!$filePath || !file_exists($filePath)) {
-            throw new \FileNotFoundException("{$filePath} not found!");
+            throw new FileNotFoundException("{$filePath} not found!");
         }
         $this->filePath = $filePath;
         $this->read();
