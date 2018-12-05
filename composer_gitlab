@@ -1,0 +1,212 @@
+#!/usr/bin/env php
+<?php
+
+namespace helvete\Tools\GitlabComposerTokenHandler;
+
+class Runner
+{
+    const ENV_COMPOSER = 'COMPOSER';
+
+    protected $authPath = __DIR__ . '/../auth.json';
+    protected $composerVCS = __DIR__ . '/../composer.json';
+    protected $composerFallback = __DIR__ . '/../composer_gitignore.json';
+
+    public function run()
+    {
+        $composer = new Composer($this->composerVCS);
+        $auth = new Auth($this->authPath);
+        foreach ($composer as $repoUrl) {
+            if (is_null($credentials = $auth->$repoUrl)) {
+                continue;
+            }
+            $composer->patch($credentials);
+        }
+        $composer->sneakIn($this->getWriteComposerPath());
+        $composer->write();
+    }
+
+    protected function getWriteComposerPath()
+    {
+        repeat:
+        $composerPath = getenv(self::ENV_COMPOSER);
+        if (!$composerPath
+            || realpath($this->composerVCS) === realpath($composerPath)
+        ) {
+            putenv("COMPOSER={$this->composerFallback}");
+            goto repeat;
+        }
+
+        return $composerPath;
+    }
+}
+
+class JsonFileHandler implements JsonProcessor
+{
+    protected $filePath;
+    protected $image;
+
+    public function __construct($filePath)
+    {
+        if (!$filePath || !file_exists($filePath)) {
+            throw new \FileNotFoundException("{$filePath} not found!");
+        }
+        $this->filePath = $filePath;
+        $this->read();
+    }
+
+    protected function read()
+    {
+        $jsonString = file_get_contents($this->filePath);
+        if (!$this->image = json_decode($jsonString, true)) {
+            throw new JsonDecodeException("Cannot decode {$this->filePath}");
+        }
+    }
+
+    public function write()
+    {
+        if (!$this->filePath) {
+            throw new InconsistentStateException('Must read before write!');
+        }
+        return file_put_contents(
+            $this->filePath,
+            json_encode(
+                $this->image,
+                JSON_PRETTY_PRINT|JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE
+            )
+        );
+    }
+}
+
+class Composer extends JsonFileHandler implements \Countable, \Iterator
+{
+    const KEY_REPOSITORIES = 'repositories';
+    const KEY_TYPE = 'type';
+    const KEY_URL = 'url';
+
+    const VAL_VCS = 'vcs';
+    const VAL_GIT = 'git';
+
+    const TRIM_START = 'https://';
+    const TRIM_END = '.git';
+
+    private $position = 0;
+
+    public function rewind()
+    {
+        $this->position = 0;
+    }
+
+    public function current()
+    {
+        $a = $this->image[self::KEY_REPOSITORIES][$this->position][self::KEY_URL];
+        list(, $a) = explode(self::TRIM_START, $a);
+        list($a) = explode(self::TRIM_END, $a);
+
+        return $a;
+    }
+
+    public function key()
+    {
+        return $this->position;
+    }
+
+    public function next()
+    {
+        ++$this->position;
+        if ($this->valid() && !$this->vcsTypeAllowed()) {
+            $this->next();
+        }
+    }
+
+    public function valid()
+    {
+        return isset($this->image[self::KEY_REPOSITORIES][$this->position]);
+    }
+
+    public function count()
+    {
+        return count($this->image[self::KEY_REPOSITORIES]);
+    }
+
+    public function patch($credentials)
+    {
+        $this->validateStructure($credentials);
+        $this->image[self::KEY_REPOSITORIES][$this->position][self::KEY_URL] =
+            sprintf(
+                '%s%s:%s@%s%s',
+                Composer::TRIM_START,
+                $credentials[Auth::KEY_USERNAME],
+                $credentials[Auth::KEY_PASSWORD],
+                $this->image[self::KEY_REPOSITORIES][$this->position][self::KEY_URL],
+                Composer::TRIM_END
+            );
+    }
+
+    protected function validateStructure(array $credentials)
+    {
+        foreach ([Auth::KEY_USERNAME, Auth::KEY_PASSWORD] as $mandatory) {
+            if (!array_key_exists($mandatory, $credentials)) {
+                throw new InvalidFormatException("Missing key {$mandatory}");
+            }
+            if (empty($credentials[$mandatory])) {
+                throw new InvalidFormatException("No value for {$mandatory}");
+            }
+        }
+    }
+
+    static public function allowedTypes()
+    {
+        return [
+            self::VAL_VCS,
+            self::VAL_GIT,
+        ];
+    }
+
+    protected function vcsTypeAllowed()
+    {
+        return in_array(
+            $this->image[self::KEY_REPOSITORIES][$this->position][self::KEY_TYPE],
+            self::allowedTypes(),
+            true
+        );
+    }
+
+    public function sneakIn($filePath)
+    {
+        $this->filePath = $filePath;
+    }
+}
+
+class Auth extends JsonFileHandler
+{
+    const KEY_AUTH = 'http-basic';
+    const KEY_USERNAME = 'username';
+    const KEY_PASSWORD = 'password';
+
+    public function write()
+    {
+        throw new InconsistentStateException("Writing {$filePath} not available");
+    }
+
+    public function __get($name)
+    {
+        foreach ($this->image[self::KEY_AUTH] as $repoName => $credentials) {
+            if (stristr($repoName, $name) === false) {
+                continue;
+            }
+            return $this->image[self::KEY_AUTH][$repoName];
+        }
+    }
+}
+
+interface JsonProcessor
+{
+    public function write();
+}
+
+class FileNotFoundException extends \Exception {}
+class JsonDecodeException extends \Exception {}
+class InconsistentStateException extends \Exception {}
+class InvalidFormatException extends \Exception {}
+
+(new Runner())->run();
