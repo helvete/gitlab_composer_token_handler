@@ -1,0 +1,85 @@
+#!/usr/bin/env php
+<?php
+error_reporting(-1);
+
+define('REPOSITORIES', 'repositories');
+define('TYPE_VCS', 'vcs');
+define('TYPE_GIT', 'git');
+define('TYPE_TYPE', 'type');
+define('TYPE_URL', 'url');
+
+define('STRPOS_SEARCH', 'https://gitlab.selfhosted.domain.tld');
+define('EXPLODE_BY', 'https://');
+define('KEY_AUTH', 'http-basic');
+
+define('KEY_USERNAME', 'username');
+define('KEY_PASSWORD', 'password');
+
+$authPath = __DIR__ . '/../auth.json';
+$composerVCS = __DIR__ . '/../composer.json';
+$composerFallback = __DIR__ . '/../composer_gitignore.json';
+
+repeat:
+$composerPath = getenv('COMPOSER');
+if (!$composerPath || realpath($composerVCS) === realpath($composerPath)) {
+    putenv("COMPOSER={$composerFallback}");
+    goto repeat;
+}
+
+$composer = parseJsonFile($composerVCS);
+$auth = parseJsonFile($authPath);
+
+if (!array_key_exists(REPOSITORIES, $composer)
+    || !is_array($composer[REPOSITORIES])
+) {
+    echo "INFO: Nothing to rewrite, exiting...\n";
+    exit(0);
+}
+foreach ($composer[REPOSITORIES] as &$repoDef) {
+    if (!array_key_exists(TYPE_TYPE, $repoDef)
+        || !array_key_exists(TYPE_URL, $repoDef)
+    ) {
+        errUnparsable($composerPath);
+    }
+    if (!in_array($repoDef[TYPE_TYPE], [TYPE_VCS, TYPE_GIT])
+        || strpos($repoDef[TYPE_URL], STRPOS_SEARCH) === false
+    ) {
+        continue;
+    }
+    list(, $protocolLess) = explode(EXPLODE_BY, $repoDef[TYPE_URL]);
+    if (!array_key_exists($protocolLess, $auth[KEY_AUTH])) {
+        echo "INFO: No credential match found, skipping...\n";
+        continue;
+    }
+    echo $protocolLess . "\n"; //TODO: delete
+    $that = $auth[KEY_AUTH][$protocolLess];
+    $baComponent = "{$that[KEY_USERNAME]}:{$that[KEY_PASSWORD]}@";
+    $repoDef[TYPE_URL] = EXPLODE_BY . "{$baComponent}{$repoDef[TYPE_URL]}";
+}
+
+// write
+file_put_contents(
+    $composerPath,
+    json_encode(
+        $composer,
+        JSON_PRETTY_PRINT|JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE
+    )
+);
+
+function parseJsonFile($path) {
+    if (!file_exists($path)) {
+        echo "FATAL: '${path}' does not exist, aborting...\n";
+        exit(127);
+    }
+    $jsonString = file_get_contents($path);
+    if (!$data = json_decode($jsonString, true)) {
+        errUnparsable($path);
+    }
+
+    return $data;
+}
+
+function errUnparsable($path) {
+    echo "FATAL: unparsable '${path}' format, aborting...\n";
+    exit(127);
+}
