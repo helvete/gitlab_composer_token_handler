@@ -54,7 +54,7 @@ foreach ($composer[REPOSITORIES] as &$repoDef) {
     echo $protocolLess . "\n"; //TODO: delete
     $that = $auth[KEY_AUTH][$protocolLess];
     $baComponent = "{$that[KEY_USERNAME]}:{$that[KEY_PASSWORD]}@";
-    $repoDef[TYPE_URL] = EXPLODE_BY . "{$baComponent}{$repoDef[TYPE_URL]}";
+    $repoDef[TYPE_URL] = EXPLODE_BY . "{$baComponent}{$protocolLess}";
 }
 
 // write
