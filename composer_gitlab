@@ -98,11 +98,9 @@ class Composer extends JsonFileHandler implements \Countable, \Iterator
 
     public function current()
     {
-        $a = $this->image[self::KEY_REPOSITORIES][$this->position][self::KEY_URL];
-        list(, $a) = explode(self::TRIM_START, $a);
-        list($a) = explode(self::TRIM_END, $a);
-
-        return $a;
+        return $this->cleanFix(
+            $this->image[self::KEY_REPOSITORIES][$this->position][self::KEY_URL]
+        );
     }
 
     public function key()
@@ -137,7 +135,9 @@ class Composer extends JsonFileHandler implements \Countable, \Iterator
                 Composer::TRIM_START,
                 $credentials[Auth::KEY_USERNAME],
                 $credentials[Auth::KEY_PASSWORD],
-                $this->image[self::KEY_REPOSITORIES][$this->position][self::KEY_URL],
+                $this->cleanFix(
+                    $this->image[self::KEY_REPOSITORIES][$this->position][self::KEY_URL]
+                ),
                 Composer::TRIM_END
             );
     }
@@ -169,6 +169,14 @@ class Composer extends JsonFileHandler implements \Countable, \Iterator
             self::allowedTypes(),
             true
         );
+    }
+
+    protected function cleanFix($a)
+    {
+        list(, $a) = explode(self::TRIM_START, $a);
+        list($a) = explode(self::TRIM_END, $a);
+
+        return $a;
     }
 
     public function sneakIn($filePath)
