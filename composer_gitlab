@@ -13,8 +13,10 @@ class Runner
 
     public function run()
     {
-        $composer = new Composer($this->composerVCS);
         $auth = new Auth($this->authPath);
+
+        // process composer.json
+        $composer = new Composer($this->composerVCS);
         foreach ($composer as $repoUrl) {
             if (is_null($credentials = $auth->$repoUrl)) {
                 continue;
@@ -23,6 +25,17 @@ class Runner
         }
         $composer->sneakIn($this->getWriteComposerPath());
         $composer->write();
+
+        // process composer.lock
+        $composerLock = new ComposerLock($this->getLockPath($this->composerVCS));
+        foreach ($composerLock as $repoUrl) {
+            if (is_null($credentials = $auth->$repoUrl)) {
+                continue;
+            }
+            $composerLock->patch($credentials);
+        }
+        $composerLock->sneakIn($this->getLockPath($this->getWriteComposerPath()));
+        $composerLock->write();
     }
 
     protected function getWriteComposerPath()
@@ -37,6 +50,11 @@ class Runner
         }
 
         return $composerPath;
+    }
+
+    protected function getLockPath($json)
+    {
+        return preg_replace("~json$~", 'lock', $json);
     }
 }
 
@@ -98,7 +116,7 @@ class Composer extends JsonFileHandler implements \Countable, \Iterator
 
     public function current()
     {
-        return $this->cleanFix(
+        return self::cleanFix(
             $this->image[self::KEY_REPOSITORIES][$this->position][self::KEY_URL]
         );
     }
@@ -128,21 +146,21 @@ class Composer extends JsonFileHandler implements \Countable, \Iterator
 
     public function patch($credentials)
     {
-        $this->validateStructure($credentials);
+        self::validateStructure($credentials);
         $this->image[self::KEY_REPOSITORIES][$this->position][self::KEY_URL] =
             sprintf(
                 '%s%s:%s@%s%s',
                 Composer::TRIM_START,
                 $credentials[Auth::KEY_USERNAME],
                 $credentials[Auth::KEY_PASSWORD],
-                $this->cleanFix(
+                self::cleanFix(
                     $this->image[self::KEY_REPOSITORIES][$this->position][self::KEY_URL]
                 ),
                 Composer::TRIM_END
             );
     }
 
-    protected function validateStructure(array $credentials)
+    static public function validateStructure(array $credentials)
     {
         foreach ([Auth::KEY_USERNAME, Auth::KEY_PASSWORD] as $mandatory) {
             if (!array_key_exists($mandatory, $credentials)) {
@@ -171,12 +189,74 @@ class Composer extends JsonFileHandler implements \Countable, \Iterator
         );
     }
 
-    protected function cleanFix($a)
+    static public function cleanFix($a)
     {
         list(, $a) = explode(self::TRIM_START, $a);
         list($a) = explode(self::TRIM_END, $a);
 
         return $a;
+    }
+
+    public function sneakIn($filePath)
+    {
+        $this->filePath = $filePath;
+    }
+}
+
+class ComposerLock extends JsonFileHandler implements \Countable, \Iterator
+{
+    const KEY_PACKAGES = 'packages';
+    const KEY_SOURCE = 'source';
+    const KEY_URL = Composer::KEY_URL;
+
+    private $position = 0;
+
+    public function rewind()
+    {
+        $this->position = 0;
+    }
+
+    public function current()
+    {
+        return Composer::cleanFix(
+            $this->image[self::KEY_PACKAGES][$this->position][self::KEY_SOURCE][self::KEY_URL]
+        );
+    }
+
+    public function key()
+    {
+        return $this->position;
+    }
+
+    public function next()
+    {
+        ++$this->position;
+    }
+
+    public function valid()
+    {
+        return isset($this->image[self::KEY_PACKAGES][$this->position][self::KEY_SOURCE]);
+    }
+
+    public function count()
+    {
+        return count($this->image[self::KEY_PACKAGES]);
+    }
+
+    public function patch($credentials)
+    {
+        Composer::validateStructure($credentials);
+        $this->image[self::KEY_PACKAGES][$this->position][self::KEY_SOURCE][self::KEY_URL] =
+            sprintf(
+                '%s%s:%s@%s%s',
+                Composer::TRIM_START,
+                $credentials[Auth::KEY_USERNAME],
+                $credentials[Auth::KEY_PASSWORD],
+                Composer::cleanFix(
+                    $this->image[self::KEY_PACKAGES][$this->position][self::KEY_SOURCE][self::KEY_URL]
+                ),
+                Composer::TRIM_END
+            );
     }
 
     public function sneakIn($filePath)
