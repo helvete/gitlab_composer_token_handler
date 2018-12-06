@@ -193,7 +193,7 @@ class Auth extends JsonFileHandler
 
     public function write()
     {
-        throw new InconsistentStateException("Writing {$filePath} not available");
+        throw new InconsistentStateException("Writing 'auth.json' not available");
     }
 
     public function __get($name)
