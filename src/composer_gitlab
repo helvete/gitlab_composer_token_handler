@@ -198,17 +198,16 @@ class Composer extends ComposerBase
     public function patch($credentials)
     {
         self::validateStructure($credentials);
-        $this->image[self::REPO][$this->position][self::URL] =
-            sprintf(
-                self::PATTERN_REPO_URL,
-                self::TRIM_START,
-                $credentials[Auth::USERNAME],
-                $credentials[Auth::PASSWORD],
-                self::cleanFix(
-                    $this->image[self::REPO][$this->position][self::URL]
-                ),
-                self::TRIM_END
-            );
+        $this->image[self::REPO][$this->position][self::URL] = sprintf(
+            self::PATTERN_REPO_URL,
+            self::TRIM_START,
+            $credentials[Auth::USERNAME],
+            $credentials[Auth::PASSWORD],
+            self::cleanFix(
+                $this->image[self::REPO][$this->position][self::URL]
+            ),
+            self::TRIM_END
+        );
     }
 
     static public function allowedTypes()
@@ -254,17 +253,16 @@ class ComposerLock extends ComposerBase
     public function patch($credentials)
     {
         self::validateStructure($credentials);
-        $this->image[self::PKG][$this->position][self::SRC][self::URL] =
-            sprintf(
-                self::PATTERN_REPO_URL,
-                self::TRIM_START,
-                $credentials[Auth::USERNAME],
-                $credentials[Auth::PASSWORD],
-                self::cleanFix(
-                    $this->image[self::PKG][$this->position][self::SRC][self::URL]
-                ),
-                self::TRIM_END
-            );
+        $this->image[self::PKG][$this->position][self::SRC][self::URL] = sprintf(
+            self::PATTERN_REPO_URL,
+            self::TRIM_START,
+            $credentials[Auth::USERNAME],
+            $credentials[Auth::PASSWORD],
+            self::cleanFix(
+                $this->image[self::PKG][$this->position][self::SRC][self::URL]
+            ),
+            self::TRIM_END
+        );
     }
 }
 
@@ -276,7 +274,7 @@ class Auth extends JsonFileHandler
 
     public function write()
     {
-        throw new InconsistentStateException("Writing 'auth.json' not available");
+        throw new InconsistentStateException("Writing 'auth.json' not allowed");
     }
 
     public function __get($name)
