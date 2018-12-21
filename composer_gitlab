@@ -95,35 +95,86 @@ class JsonFileHandler implements JsonProcessor
     }
 }
 
-class Composer extends JsonFileHandler implements \Countable, \Iterator
+class ComposerBase extends JsonFileHandler implements \Countable, \Iterator
 {
-    const KEY_REPOSITORIES = 'repositories';
-    const KEY_TYPE = 'type';
     const KEY_URL = 'url';
-
-    const VAL_VCS = 'vcs';
-    const VAL_GIT = 'git';
 
     const TRIM_START = 'https://';
     const TRIM_END = '.git';
 
-    private $position = 0;
+    const PATTERN_REPO_URL = '%s%s:%s@%s%s';
+
+    protected $position = 0;
 
     public function rewind()
     {
         $this->position = 0;
     }
 
+    public function key()
+    {
+        return $this->position;
+    }
+
+    public function next()
+    {
+        ++$this->position;
+    }
+
+    public function current()
+    {
+        throw new InheritanceException("Method has to be overridden: 'current'");
+    }
+
+    public function valid()
+    {
+        throw new InheritanceException("Method has to be overridden: 'valid'");
+    }
+
+    public function count()
+    {
+        throw new InheritanceException("Method has to be overridden: 'count'");
+    }
+
+    static public function validateStructure(array $credentials)
+    {
+        foreach ([Auth::KEY_USERNAME, Auth::KEY_PASSWORD] as $mandatory) {
+            if (!array_key_exists($mandatory, $credentials)) {
+                throw new InvalidFormatException("Missing key {$mandatory}");
+            }
+            if (empty($credentials[$mandatory])) {
+                throw new InvalidFormatException("No value for {$mandatory}");
+            }
+        }
+    }
+
+    static public function cleanFix($a)
+    {
+        list(, $a) = explode(static::TRIM_START, $a);
+        list($a) = explode(static::TRIM_END, $a);
+
+        return $a;
+    }
+
+    public function sneakIn($filePath)
+    {
+        $this->filePath = $filePath;
+    }
+}
+
+class Composer extends ComposerBase
+{
+    const KEY_REPOSITORIES = 'repositories';
+    const KEY_TYPE = 'type';
+
+    const VAL_VCS = 'vcs';
+    const VAL_GIT = 'git';
+
     public function current()
     {
         return self::cleanFix(
             $this->image[self::KEY_REPOSITORIES][$this->position][self::KEY_URL]
         );
-    }
-
-    public function key()
-    {
-        return $this->position;
     }
 
     public function next()
@@ -149,27 +200,15 @@ class Composer extends JsonFileHandler implements \Countable, \Iterator
         self::validateStructure($credentials);
         $this->image[self::KEY_REPOSITORIES][$this->position][self::KEY_URL] =
             sprintf(
-                '%s%s:%s@%s%s',
-                Composer::TRIM_START,
+                self::PATTERN_REPO_URL,
+                self::TRIM_START,
                 $credentials[Auth::KEY_USERNAME],
                 $credentials[Auth::KEY_PASSWORD],
                 self::cleanFix(
                     $this->image[self::KEY_REPOSITORIES][$this->position][self::KEY_URL]
                 ),
-                Composer::TRIM_END
+                self::TRIM_END
             );
-    }
-
-    static public function validateStructure(array $credentials)
-    {
-        foreach ([Auth::KEY_USERNAME, Auth::KEY_PASSWORD] as $mandatory) {
-            if (!array_key_exists($mandatory, $credentials)) {
-                throw new InvalidFormatException("Missing key {$mandatory}");
-            }
-            if (empty($credentials[$mandatory])) {
-                throw new InvalidFormatException("No value for {$mandatory}");
-            }
-        }
     }
 
     static public function allowedTypes()
@@ -188,49 +227,18 @@ class Composer extends JsonFileHandler implements \Countable, \Iterator
             true
         );
     }
-
-    static public function cleanFix($a)
-    {
-        list(, $a) = explode(self::TRIM_START, $a);
-        list($a) = explode(self::TRIM_END, $a);
-
-        return $a;
-    }
-
-    public function sneakIn($filePath)
-    {
-        $this->filePath = $filePath;
-    }
 }
 
-class ComposerLock extends JsonFileHandler implements \Countable, \Iterator
+class ComposerLock extends ComposerBase
 {
     const KEY_PACKAGES = 'packages';
     const KEY_SOURCE = 'source';
-    const KEY_URL = Composer::KEY_URL;
-
-    private $position = 0;
-
-    public function rewind()
-    {
-        $this->position = 0;
-    }
 
     public function current()
     {
-        return Composer::cleanFix(
+        return self::cleanFix(
             $this->image[self::KEY_PACKAGES][$this->position][self::KEY_SOURCE][self::KEY_URL]
         );
-    }
-
-    public function key()
-    {
-        return $this->position;
-    }
-
-    public function next()
-    {
-        ++$this->position;
     }
 
     public function valid()
@@ -245,23 +253,18 @@ class ComposerLock extends JsonFileHandler implements \Countable, \Iterator
 
     public function patch($credentials)
     {
-        Composer::validateStructure($credentials);
+        self::validateStructure($credentials);
         $this->image[self::KEY_PACKAGES][$this->position][self::KEY_SOURCE][self::KEY_URL] =
             sprintf(
-                '%s%s:%s@%s%s',
-                Composer::TRIM_START,
+                self::PATTERN_REPO_URL,
+                self::TRIM_START,
                 $credentials[Auth::KEY_USERNAME],
                 $credentials[Auth::KEY_PASSWORD],
-                Composer::cleanFix(
+                self::cleanFix(
                     $this->image[self::KEY_PACKAGES][$this->position][self::KEY_SOURCE][self::KEY_URL]
                 ),
-                Composer::TRIM_END
+                self::TRIM_END
             );
-    }
-
-    public function sneakIn($filePath)
-    {
-        $this->filePath = $filePath;
     }
 }
 
@@ -296,5 +299,6 @@ class FileNotFoundException extends \Exception {}
 class JsonDecodeException extends \Exception {}
 class InconsistentStateException extends \Exception {}
 class InvalidFormatException extends \Exception {}
+class InheritanceException extends \Exception {}
 
 (new Runner())->run();
