@@ -4,8 +4,8 @@
 * composer cannot declare repo-specific basic auth (at least for `gitlab`)
 
 There are two approaches to mitigate the problem:
-# create deploy user for all repositories that will be given access to particular environment (production, staging, UAT, ...) and generate a token for him. Cons are gitlab service is paid per user which means: the more environments you need the more money you have to spend for deployment (this isn't such a problem w/ comunity edition which is free of charge)
-# manage the tokens by yourself
+1. create deploy user for all repositories that will be given access to particular environment (production, staging, UAT, ...) and generate a token for him. Cons are gitlab service is paid per user which means: the more environments you need the more money you have to spend for deployment (this isn't such a problem w/ comunity edition which is free of charge)
+1. manage the tokens by yourself
 
 This script was created in order to manage the tokens (point 2) while maintaining the same level of security.
 
