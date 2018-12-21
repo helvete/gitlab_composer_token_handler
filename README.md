@@ -1,11 +1,64 @@
 # gitlab_composer_token_handler
-gitlab tokens are per repository; composer cannot declare repo-specific basic auth
+
+* gitlab deploy tokens can be generated per repository only (cannot be shared between more repositories)
+* composer cannot declare repo-specific basic auth (at least for `gitlab`)
+
+There are two approaches to mitigate the problem:
+# create deploy user for all repositories that will be given access to particular environment (production, staging, UAT, ...) and generate a token for him. Cons are gitlab service is paid per user which means: the more environments you need the more money you have to spend for deployment (this isn't such a problem w/ comunity edition which is free of charge)
+# manage the tokens by yourself
+
+This script was created in order to manage the tokens (point 2) while maintaining the same level of security.
 
 Contents auth.json should look like this (ie. to contain full protocol-less repository URL):
 ```
+{
     "http-basic": {
-        "gitlab.selfhosted.domain.tld/gitlab_composer_token_handler.git": {
-            "password": "secret-passwordish-token",
-            "username": "gitlab+deploy-token-01"
+        "gitlab.selfhosted.domain.tld/repository1.git": {
+            "password": "AAAAAAAAAAAAAAAAAAAA",
+            "username": "gitlab+deploy-token-11"
         },
+        "gitlab.selfhosted.domain.tld/repository2.git": {
+            "password": "BBBBBBBBBBBBBBBBBBBB",
+            "username": "gitlab+deploy-token-16"
+        },
+        "gitlab.selfhosted.domain.tld/repository3.git": {
+            "password": "CCCCCCCCCCCCCCCCCCCC",
+            "username": "gitlab+deploy-token-15"
+        },
+        "gitlab.selfhosted.domain.tld/repository4.git": {
+            "password": "DDDDDDDDDDDDDDDDDDDD",
+            "username": "gitlab+deploy-token-12"
+        },
+        "gitlab.selfhosted.domain.tld/repository5.git": {
+            "password": "EEEEEEEEEEEEEEEEEEEE",
+            "username": "gitlab+deploy-token-13"
+        },
+        "gitlab.selfhosted.domain.tld/repository6.git": {
+            "password": "FFFFFFFFFFFFFFFFFFFF",
+            "username": "gitlab+deploy-token-14"
+        }
+    }
+}
 ```
+
+This simple OOP tool allows you to rewrite the composer json files in order to be able to download all dependencies while not storing sensitive data within your repository.
+
+The tool was actually created for use w/ `docker` so that specific `COMPOSER` env var is set to the same value as the target file of this script. But works w/out the `docker` as well.
+
+Example snippet from `docker-compose.yml` file:
+
+```
+version: '3'
+services:
+  composer:
+    image: composer:1.4
+    volumes:
+      - htdocs:/app
+    environment:
+      - COMPOSER=/app/composer_gitignore.json
+    command: >
+      sh -c "/app/docker/composer_gitlab &&
+      composer install --no-suggest --no-interaction"
+```
+
+This way, the script is run just before the composer starts and does all the necessary replacement.
