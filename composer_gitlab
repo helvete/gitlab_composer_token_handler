@@ -97,7 +97,7 @@ class JsonFileHandler implements JsonProcessor
 
 class ComposerBase extends JsonFileHandler implements \Countable, \Iterator
 {
-    const KEY_URL = 'url';
+    const URL = 'url';
 
     const TRIM_START = 'https://';
     const TRIM_END = '.git';
@@ -138,7 +138,7 @@ class ComposerBase extends JsonFileHandler implements \Countable, \Iterator
 
     static public function validateStructure(array $credentials)
     {
-        foreach ([Auth::KEY_USERNAME, Auth::KEY_PASSWORD] as $mandatory) {
+        foreach ([Auth::USERNAME, Auth::PASSWORD] as $mandatory) {
             if (!array_key_exists($mandatory, $credentials)) {
                 throw new InvalidFormatException("Missing key {$mandatory}");
             }
@@ -164,16 +164,16 @@ class ComposerBase extends JsonFileHandler implements \Countable, \Iterator
 
 class Composer extends ComposerBase
 {
-    const KEY_REPOSITORIES = 'repositories';
-    const KEY_TYPE = 'type';
+    const REPO = 'repositories';
+    const TYPE = 'type';
 
-    const VAL_VCS = 'vcs';
-    const VAL_GIT = 'git';
+    const VCS = 'vcs';
+    const GIT = 'git';
 
     public function current()
     {
         return self::cleanFix(
-            $this->image[self::KEY_REPOSITORIES][$this->position][self::KEY_URL]
+            $this->image[self::REPO][$this->position][self::URL]
         );
     }
 
@@ -187,25 +187,25 @@ class Composer extends ComposerBase
 
     public function valid()
     {
-        return isset($this->image[self::KEY_REPOSITORIES][$this->position]);
+        return isset($this->image[self::REPO][$this->position]);
     }
 
     public function count()
     {
-        return count($this->image[self::KEY_REPOSITORIES]);
+        return count($this->image[self::REPO]);
     }
 
     public function patch($credentials)
     {
         self::validateStructure($credentials);
-        $this->image[self::KEY_REPOSITORIES][$this->position][self::KEY_URL] =
+        $this->image[self::REPO][$this->position][self::URL] =
             sprintf(
                 self::PATTERN_REPO_URL,
                 self::TRIM_START,
-                $credentials[Auth::KEY_USERNAME],
-                $credentials[Auth::KEY_PASSWORD],
+                $credentials[Auth::USERNAME],
+                $credentials[Auth::PASSWORD],
                 self::cleanFix(
-                    $this->image[self::KEY_REPOSITORIES][$this->position][self::KEY_URL]
+                    $this->image[self::REPO][$this->position][self::URL]
                 ),
                 self::TRIM_END
             );
@@ -214,15 +214,15 @@ class Composer extends ComposerBase
     static public function allowedTypes()
     {
         return [
-            self::VAL_VCS,
-            self::VAL_GIT,
+            self::VCS,
+            self::GIT,
         ];
     }
 
     protected function vcsTypeAllowed()
     {
         return in_array(
-            $this->image[self::KEY_REPOSITORIES][$this->position][self::KEY_TYPE],
+            $this->image[self::REPO][$this->position][self::TYPE],
             self::allowedTypes(),
             true
         );
@@ -231,37 +231,37 @@ class Composer extends ComposerBase
 
 class ComposerLock extends ComposerBase
 {
-    const KEY_PACKAGES = 'packages';
-    const KEY_SOURCE = 'source';
+    const PKG = 'packages';
+    const SRC = 'source';
 
     public function current()
     {
         return self::cleanFix(
-            $this->image[self::KEY_PACKAGES][$this->position][self::KEY_SOURCE][self::KEY_URL]
+            $this->image[self::PKG][$this->position][self::SRC][self::URL]
         );
     }
 
     public function valid()
     {
-        return isset($this->image[self::KEY_PACKAGES][$this->position][self::KEY_SOURCE]);
+        return isset($this->image[self::PKG][$this->position][self::SRC]);
     }
 
     public function count()
     {
-        return count($this->image[self::KEY_PACKAGES]);
+        return count($this->image[self::PKG]);
     }
 
     public function patch($credentials)
     {
         self::validateStructure($credentials);
-        $this->image[self::KEY_PACKAGES][$this->position][self::KEY_SOURCE][self::KEY_URL] =
+        $this->image[self::PKG][$this->position][self::SRC][self::URL] =
             sprintf(
                 self::PATTERN_REPO_URL,
                 self::TRIM_START,
-                $credentials[Auth::KEY_USERNAME],
-                $credentials[Auth::KEY_PASSWORD],
+                $credentials[Auth::USERNAME],
+                $credentials[Auth::PASSWORD],
                 self::cleanFix(
-                    $this->image[self::KEY_PACKAGES][$this->position][self::KEY_SOURCE][self::KEY_URL]
+                    $this->image[self::PKG][$this->position][self::SRC][self::URL]
                 ),
                 self::TRIM_END
             );
@@ -270,9 +270,9 @@ class ComposerLock extends ComposerBase
 
 class Auth extends JsonFileHandler
 {
-    const KEY_AUTH = 'http-basic';
-    const KEY_USERNAME = 'username';
-    const KEY_PASSWORD = 'password';
+    const AUTH = 'http-basic';
+    const USERNAME = 'username';
+    const PASSWORD = 'password';
 
     public function write()
     {
@@ -281,11 +281,11 @@ class Auth extends JsonFileHandler
 
     public function __get($name)
     {
-        foreach ($this->image[self::KEY_AUTH] as $repoName => $credentials) {
+        foreach ($this->image[self::AUTH] as $repoName => $credentials) {
             if (stristr($repoName, $name) === false) {
                 continue;
             }
-            return $this->image[self::KEY_AUTH][$repoName];
+            return $this->image[self::AUTH][$repoName];
         }
     }
 }
