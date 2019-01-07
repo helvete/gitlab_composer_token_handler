@@ -1,15 +1,17 @@
 # gitlab_composer_token_handler
 
+The reasons for creating this tool is:
+
 * gitlab deploy tokens can be generated per repository only (cannot be shared between more repositories)
 * composer cannot declare repo-specific basic auth (at least for `gitlab`)
 
 There are two approaches to mitigate the problem:
-1. create deploy user for all repositories that will be given access to particular environment (production, staging, UAT, ...) and generate a token for him. Cons are gitlab service is paid per user which means: the more environments you need the more money you have to spend for deployment (this isn't such a problem w/ comunity edition which is free of charge)
-1. manage the tokens by yourself
+1. create deploy user for all repositories that will be given access to particular environment (production, staging, UAT, ...) and generate a token for him. Cons are gitlab service is paid per user which means: the more environments you need the more money you have to spend for deployment (this isn't a problem w/ comunity edition which is free of charge)
+1. manage the tokens per environment AND repository
 
-This script was created in order to manage the tokens (point 2) while maintaining the same level of security.
+This tool was created in order to manage the tokens (point 2) automatically while maintaining the same level of security as of the default basic auth model.
 
-Contents auth.json should look like this (ie. to contain full protocol-less repository URL):
+`auth.json` file has to have a bit different structure. The contents of it should look like this (ie. to contain full repository URL instead of just a FQDN):
 ```
 {
     "http-basic": {
