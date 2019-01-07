@@ -1,6 +1,6 @@
 # gitlab_composer_token_handler
 
-The reasons for creating this tool is:
+The reasons for creating this tool are:
 
 * gitlab deploy tokens can be generated per repository only (cannot be shared between more repositories)
 * composer cannot declare repo-specific basic auth (at least for `gitlab`)
