@@ -27,15 +27,19 @@ class Runner
         $composer->write();
 
         // process composer.lock
-        $composerLock = new ComposerLock($this->getLockPath($this->composerVCS));
-        foreach ($composerLock as $repoUrl) {
+        try {
+            $lockFile = new ComposerLock($this->getLockPath($this->composerVCS));
+        } catch (FileNotFoundException $itSufficesToKnowItHasBeenThrown) {
+            return; // no lockfile yet, halt processing
+        }
+        foreach ($lockFile as $repoUrl) {
             if (is_null($credentials = $auth->$repoUrl)) {
                 continue;
             }
-            $composerLock->patch($credentials);
+            $lockFile->patch($credentials);
         }
-        $composerLock->sneakIn($this->getLockPath($this->getWriteComposerPath()));
-        $composerLock->write();
+        $lockFile->sneakIn($this->getLockPath($this->getWriteComposerPath()));
+        $lockFile->write();
     }
 
     protected function getWriteComposerPath()
