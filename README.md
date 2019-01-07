@@ -12,7 +12,8 @@ There are two approaches to mitigate the problem:
 This tool was created in order to manage the tokens (point 2) automatically while maintaining the same level of security as of the default basic auth model.
 
 `auth.json` file has to have a bit different structure. The contents of it should look like this (ie. to contain full repository URL instead of just a FQDN):
-```
+
+```JavaScript
 {
     "http-basic": {
         "gitlab.selfhosted.domain.tld/repository1.git": {
@@ -49,7 +50,7 @@ The tool was actually created for use w/ `docker` so that specific `COMPOSER` en
 
 Example snippet from `docker-compose.yml` file:
 
-```
+```YAML
 version: '3'
 services:
   composer:
