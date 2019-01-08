@@ -191,7 +191,11 @@ class Composer extends ComposerBase
 
     public function valid()
     {
-        return isset($this->image[self::REPO][$this->position]);
+        return isset($this->image[self::REPO][$this->position])
+            && preg_match(
+                '|^' . static::TRIM_START . '|',
+                $this->image[self::REPO][$this->position][self::URL]
+            );
     }
 
     public function count()
@@ -246,7 +250,11 @@ class ComposerLock extends ComposerBase
 
     public function valid()
     {
-        return isset($this->image[self::PKG][$this->position][self::SRC]);
+        return isset($this->image[self::PKG][$this->position][self::SRC])
+            && preg_match(
+                '|^' . static::TRIM_START . '|',
+                $this->image[self::PKG][$this->position][self::SRC][self::URL]
+            );
     }
 
     public function count()
