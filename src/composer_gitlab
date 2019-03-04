@@ -191,11 +191,7 @@ class Composer extends ComposerBase
 
     public function valid()
     {
-        return isset($this->image[self::REPO][$this->position])
-            && preg_match(
-                '|^' . static::TRIM_START . '|',
-                $this->image[self::REPO][$this->position][self::URL]
-            );
+        return isset($this->image[self::REPO][$this->position]);
     }
 
     public function count()
@@ -250,11 +246,7 @@ class ComposerLock extends ComposerBase
 
     public function valid()
     {
-        return isset($this->image[self::PKG][$this->position][self::SRC])
-            && preg_match(
-                '|^' . static::TRIM_START . '|',
-                $this->image[self::PKG][$this->position][self::SRC][self::URL]
-            );
+        return isset($this->image[self::PKG][$this->position][self::SRC]);
     }
 
     public function count()
@@ -291,6 +283,9 @@ class Auth extends JsonFileHandler
 
     public function __get($name)
     {
+        if (empty($name)) {
+            return;
+        }
         foreach ($this->image[self::AUTH] as $repoName => $credentials) {
             if (stristr($repoName, $name) === false) {
                 continue;
